@@ -160,7 +160,7 @@ export function FavoritesClient({
         coverImage: drama.coverImage,
         category: drama.category,
         type: drama.type,
-        isType1: isType1,
+        isType1: isType1 ?? false,
       };
     }
 
