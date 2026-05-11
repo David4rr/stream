@@ -167,7 +167,8 @@ export function WatchPage({
 
       if (kategori === "drama") {
         const targetChapter = chapters[chapterIndex];
-        const targetChapterId = targetChapter?.chapterId || targetChapter?.id || targetChapter?.sourceId;
+//        const targetChapterId = targetChapter?.chapterId || targetChapter?.id || targetChapter?.sourceId;
+        const targetChapterId = targetChapter?.chapterId;
         if (!targetChapterId) return null;
 
         const dramaType = Number(type) || 1;
