@@ -88,7 +88,7 @@ export function DetailPage({
                             <DramaInfoSection
                                 kategori={kategori}
                                 provider={provider}
-                                dramaId={type === 2 ? urlDramaId : dramaData.id}
+                                dramaId={(type === 2 ? urlDramaId : dramaData.id) ?? ''}
                                 title={dramaData.title}
                                 description={description || ''}
                                 chapterCount={chapterCount}
