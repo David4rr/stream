@@ -88,7 +88,7 @@ export async function getAllFavorites(): Promise<FavoritesResponse> {
     }
 
     if (authenticatedUserId) {
-      const userFavorites = favorites.filter(fav => fav.userId === authenticatedUserId);
+      const userFavorites = favorites.filter((fav: any) => fav.userId === authenticatedUserId);
 
       const enrichedFavorites = await enrichFavoritesBatch(userFavorites, API_BASE_URL);
 
