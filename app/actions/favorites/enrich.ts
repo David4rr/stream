@@ -27,7 +27,7 @@ function createFallback(fav: FavoriteDrama, pk: string, sid: string): FavoriteDr
   return {
     ...fav,
     title,
-    coverImage: fav.coverImage || null,
+    coverImage: fav.coverImage ?? undefined,
     description: fav.description || pk,
     category: fav.category || category,
     providerKey: pk,
