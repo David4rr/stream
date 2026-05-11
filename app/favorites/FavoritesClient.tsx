@@ -180,7 +180,7 @@ export function FavoritesClient({
         coverImage: drama.coverImage,
         category: drama.category,
         type: drama.type || parseInt(providerKey?.replace(/\D/g, '') || '1', 10),
-        isType1: isType1,
+        isType1: isType1 ?? false,
       };
     }
 
