@@ -228,7 +228,7 @@ export type GoogleAuthUrlResult = GoogleAuthUrlResponse | GoogleAuthUrlError;
 export async function getGoogleAuthUrl(): Promise<GoogleAuthUrlResult> {
   try {
     const apiBaseUrl = getApiBaseUrl();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
 
     // Frontend callback URL - Google akan redirect ke sini setelah user approve
     const callbackUrl = `${appUrl}/auth/callback`;
@@ -286,7 +286,7 @@ export async function exchangeGoogleCode(
 ): Promise<GoogleExchangeResult | GoogleExchangeError> {
   try {
     const apiBaseUrl = getApiBaseUrl();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
     const redirectUri = `${appUrl}/auth/callback`;
 
 
