@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const apiBaseUrl = process.env.API_BASE_URL;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     const callbackUrl = `${appUrl}/auth/callback`;
 
 
