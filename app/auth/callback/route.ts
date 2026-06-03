@@ -22,6 +22,14 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error');
 
 
+  let baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!baseUrl || (baseUrl.includes('localhost') && !request.nextUrl.origin.includes('localhost'))) {
+    const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const forwardedProto = request.headers.get('x-forwarded-proto') || (forwardedHost?.includes('localhost') ? 'http' : 'https');
+    baseUrl = forwardedHost ? `${forwardedProto}://${forwardedHost}` : request.nextUrl.origin;
+  }
+  if (!baseUrl) baseUrl = request.nextUrl.origin;
+
   // Handle user denial or OAuth error
   if (error) {
     const errorMessages: Record<string, string> = {
@@ -29,21 +37,20 @@ export async function GET(request: NextRequest) {
     };
     const errorMessage = errorMessages[error] || `OAuth Error: ${error}`;
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(errorMessage)}`, request.url),
+      new URL(`/login?error=${encodeURIComponent(errorMessage)}`, baseUrl),
     );
   }
 
   // Missing code is invalid
   if (!code) {
     return NextResponse.redirect(
-      new URL('/login?error=missing_code', request.url),
+      new URL('/login?error=missing_code', baseUrl),
     );
   }
 
   try {
     const apiBaseUrl = process.env.API_BASE_URL;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const callbackUrl = `${appUrl}/auth/callback`;
+    const callbackUrl = `${baseUrl}/auth/callback`;
 
 
     // Exchange code with backend
@@ -59,7 +66,7 @@ export async function GET(request: NextRequest) {
     if (!exchangeResponse.ok) {
       const errorText = await exchangeResponse.text();
       return NextResponse.redirect(
-        new URL('/login?error=exchange_failed', request.url),
+        new URL('/login?error=exchange_failed', baseUrl),
       );
     }
 
@@ -84,12 +91,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Success - redirect to beranda with hint for Google auth
-    const redirectUrl = new URL('/beranda', request.url);
+    const redirectUrl = new URL('/beranda', baseUrl);
     redirectUrl.searchParams.set('auth', 'google');
     return NextResponse.redirect(redirectUrl);
   } catch (e) {
     return NextResponse.redirect(
-      new URL('/login?error=server_error', request.url),
+      new URL('/login?error=server_error', baseUrl),
     );
   }
 }

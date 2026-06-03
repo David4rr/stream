@@ -1,5 +1,5 @@
 import { ZodError } from 'zod';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 
 export interface AuthResponseData {
   user: {
@@ -228,7 +228,20 @@ export type GoogleAuthUrlResult = GoogleAuthUrlResponse | GoogleAuthUrlError;
 export async function getGoogleAuthUrl(): Promise<GoogleAuthUrlResult> {
   try {
     const apiBaseUrl = getApiBaseUrl();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+
+    if (!appUrl || appUrl.includes('localhost')) {
+      try {
+        const headersList = await headers();
+        const host = headersList.get('x-forwarded-host') || headersList.get('host');
+        const proto = headersList.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
+        if (host) {
+          appUrl = `${proto}://${host}`;
+        }
+      } catch (e) {
+        // Fallback to environment variable if headers() fails
+      }
+    }
 
     // Frontend callback URL - Google akan redirect ke sini setelah user approve
     const callbackUrl = `${appUrl}/auth/callback`;
@@ -286,7 +299,20 @@ export async function exchangeGoogleCode(
 ): Promise<GoogleExchangeResult | GoogleExchangeError> {
   try {
     const apiBaseUrl = getApiBaseUrl();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+
+    if (!appUrl || appUrl.includes('localhost')) {
+      try {
+        const headersList = await headers();
+        const host = headersList.get('x-forwarded-host') || headersList.get('host');
+        const proto = headersList.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
+        if (host) {
+          appUrl = `${proto}://${host}`;
+        }
+      } catch (e) {
+        // Fallback
+      }
+    }
     const redirectUri = `${appUrl}/auth/callback`;
 
 
