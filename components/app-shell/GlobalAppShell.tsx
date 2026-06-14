@@ -7,10 +7,28 @@ import { fetchProviders } from "@/store/providers-slice";
 import { fetchBerandaData } from "@/store/beranda-slice";
 import { AppHeader } from "./AppHeader";
 import { MobileHeader } from "@/components/beranda/mobile/header";
+import { getProviderPageSlug } from "@/components/beranda/utils/constants";
 import type { Provider } from "./AppHeader";
 
 interface GlobalAppShellProps {
   children: ReactNode;
+}
+
+// Provider slug pages — treated as "home" pages
+const HOME_SLUG_PREFIXES = [
+  "drama",
+  "anime",
+  "movies",
+  "manga",
+];
+
+function isHomePagePath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  // /beranda redirect page
+  if (pathname.startsWith("/beranda")) return true;
+  // /drama, /animes1, /animes2, /movies1, /movies2, /mangas1, /mangas2
+  const firstSegment = pathname.split("/").filter(Boolean)[0] || "";
+  return HOME_SLUG_PREFIXES.some((prefix) => firstSegment.startsWith(prefix));
 }
 
 export function GlobalAppShell({ children }: GlobalAppShellProps) {
@@ -19,22 +37,25 @@ export function GlobalAppShell({ children }: GlobalAppShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const providers = useAppSelector(
-    (state) => state.providers.providers ?? [],
+    (state) => state.providers.providers ?? []
   ) as Provider[];
-  const activeNav = useAppSelector(
-    (state) => state.providers.selectedProviderIndex ?? 0,
-  );
   const footerData = useAppSelector((state) => state.beranda?.data?.footer);
+
+  // Compute activeNav from URL slug instead of Redux index
+  const currentSlug = pathname?.split("/").filter(Boolean)[0] || "";
+  const activeNav = providers.findIndex(
+    (p, i) => getProviderPageSlug(p as any, providers as any, i) === currentSlug
+  );
 
   // Extract kategori and providerSlug from pathname for search
   const pathMatch = pathname?.match(/^\/([^/]+)\/([^/]+)\/search/);
   const kategori = pathMatch?.[1] || "drama";
   const providerSlug = pathMatch?.[2] || "d1";
 
-  // Derive searchQuery directly from searchParams (no setState in effect)
+  // Derive searchQuery directly from searchParams
   const searchQuery = searchParams?.get("q") || "";
 
-  // Fetch providers & footer data on mount (skip untuk halaman auth)
+  // Fetch providers & footer data on mount (skip auth pages)
   useEffect(() => {
     const isAuthPage =
       pathname?.startsWith("/login") || pathname?.startsWith("/register");
@@ -49,53 +70,48 @@ export function GlobalAppShell({ children }: GlobalAppShellProps) {
     }
   }, [providers?.length, footerData, dispatch, pathname]);
 
-  // Halaman yang tidak pakai header
   const isAuthPage =
     pathname?.startsWith("/login") || pathname?.startsWith("/register");
   const isApiRoute =
     pathname?.startsWith("/api") || pathname?.startsWith("/auth");
   const isWatchPage = pathname?.includes("/watch") || false;
   const isOnboarding = pathname === "/" || false;
-
-  // Halaman search
   const isSearchPage = pathname?.includes("/search") || false;
-
-  // Halaman beranda (punya footer sendiri, jangan render global footer)
-  const isBeranda = pathname?.startsWith("/beranda") || false;
-
-  // Check if current route is /profile
+  const isHomePage = isHomePagePath(pathname);
   const isProfile = pathname?.startsWith("/profile") || false;
-
-  // Halaman favorites
   const isFavorites = pathname?.startsWith("/favorites") || false;
-
-  // Halaman detail
   const isDetailPage = pathname?.includes("/detail") || false;
-  const handleNavClick = (index: number) => {
-    dispatch({ type: "providers/setSelectedProviderIndex", payload: index });
-    router.push("/beranda");
-  };
 
-  // Handle search for search page
+  // Navigate to provider slug on tab click
+  const handleNavClick = useCallback(
+    (index: number) => {
+      const slug = getProviderPageSlug(
+        providers[index] as any,
+        providers as any,
+        index
+      );
+      router.push(`/${slug}`);
+    },
+    [providers, router]
+  );
+
   const handleSearch = useCallback(
     (query: string) => {
       if (query) {
         router.push(
-          `/${kategori}/${providerSlug}/search?q=${encodeURIComponent(query)}`,
+          `/${kategori}/${providerSlug}/search?q=${encodeURIComponent(query)}`
         );
       } else {
         router.push(`/${kategori}/${providerSlug}/search`);
       }
     },
-    [router, kategori, providerSlug],
+    [router, kategori, providerSlug]
   );
 
-  // Untuk halaman auth, watch, & onboarding: render children tanpa shell
   if (isAuthPage || isApiRoute || isWatchPage || isOnboarding) {
     return <div className="min-h-screen bg-black">{children}</div>;
   }
 
-  // Default footer (sama untuk desktop dan mobile)
   const defaultFooter = footerData ? (
     <footer className="bg-white dark:bg-[#0e0e0e] border-t border-gray-200 dark:border-white/10">
       <div className="px-8 lg:px-16 py-12">
@@ -119,14 +135,13 @@ export function GlobalAppShell({ children }: GlobalAppShellProps) {
     </footer>
   ) : null;
 
-  // Untuk halaman dengan header
   return (
     <div className="min-h-screen bg-white dark:bg-[#0e0e0e]">
-      {/* Desktop Header - Global */}
+      {/* Desktop Header */}
       <div className="hidden lg:block">
         <AppHeader
           providers={providers}
-          activeNav={activeNav}
+          activeNav={activeNav >= 0 ? activeNav : 0}
           onNavClick={handleNavClick}
           isBeranda={true}
           isProfileActive={isProfile || isFavorites}
@@ -139,12 +154,12 @@ export function GlobalAppShell({ children }: GlobalAppShellProps) {
         />
       </div>
 
-      {/* Mobile Header - Global (reusable MobileHeader component) */}
+      {/* Mobile Header */}
       <div className="lg:hidden">
-        {(isBeranda || isProfile || isSearchPage || isDetailPage || isFavorites) && (
+        {(isHomePage || isProfile || isSearchPage || isDetailPage || isFavorites) && (
           <MobileHeader
             providers={providers}
-            activeNav={activeNav}
+            activeNav={activeNav >= 0 ? activeNav : 0}
             setActiveNav={handleNavClick}
             isProfileActive={isProfile}
             isFavoritesActive={isFavorites}
@@ -153,7 +168,7 @@ export function GlobalAppShell({ children }: GlobalAppShellProps) {
             onSearchChange={(query) => {
               if (query) {
                 router.push(
-                  `/${kategori}/${providerSlug}/search?q=${encodeURIComponent(query)}`,
+                  `/${kategori}/${providerSlug}/search?q=${encodeURIComponent(query)}`
                 );
               } else {
                 router.push(`/${kategori}/${providerSlug}/search`);
@@ -167,8 +182,8 @@ export function GlobalAppShell({ children }: GlobalAppShellProps) {
       {/* Main Content */}
       <div>{children}</div>
 
-      {/* Global Footer - semua halaman kecuali /beranda */}
-      {!isBeranda && defaultFooter}
+      {/* Global Footer — all pages except home slug pages (they have own footer) */}
+      {!isHomePage && defaultFooter}
     </div>
   );
 }

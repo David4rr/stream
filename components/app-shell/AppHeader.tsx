@@ -7,9 +7,9 @@
 
 import { useState, useEffect, memo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Search, X } from "lucide-react";
-import { getProviderDisplayName } from "@/components/beranda/utils";
+import { getProviderDisplayName, getProviderPageSlug } from "@/components/beranda/utils/constants";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 import { UserDropdown } from "./UserDropdown";
 
@@ -37,6 +37,8 @@ export interface AppHeaderProps {
   providerSlug?: string;
 }
 
+const HOME_SLUG_PREFIXES = ["drama", "anime", "movies", "manga"];
+
 const defaultLogo = (
   <div className="flex items-center">
     <span className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
@@ -61,9 +63,17 @@ export const AppHeader = memo(function AppHeader({
   providerSlug = "d1",
 }: AppHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState(initialSearchQuery);
   const [mounted, setMounted] = useState(false);
+
+  // Derive active index from URL slug
+  const currentSlug = pathname?.split("/").filter(Boolean)[0] || "";
+  const urlActiveNav = providers.findIndex(
+    (p, i) => getProviderPageSlug(p, providers, i) === currentSlug
+  );
+  const resolvedActiveNav = urlActiveNav >= 0 ? urlActiveNav : activeNav;
 
   useEffect(() => {
     setMounted(true);
@@ -72,12 +82,8 @@ export const AppHeader = memo(function AppHeader({
     setSearchInput(initialSearchQuery);
   }, [initialSearchQuery]);
 
-  const providerNames = providers.map((p, i) =>
-    getProviderDisplayName(p, providers, i),
-  );
-
   const handleBerandaSearch = () => {
-    const provider = providers[activeNav];
+    const provider = providers[resolvedActiveNav];
     if (query.trim() && provider) {
       router.push(
         `/${provider.kategori}/${provider.slug}/search?q=${encodeURIComponent(query.trim())}`,
@@ -103,22 +109,26 @@ export const AppHeader = memo(function AppHeader({
         {logo || defaultLogo}
       </Link>
 
-      {/* Provider tabs — beranda desktop only */}
-      {isBeranda && !isSearchPage && (
+      {/* Provider tabs — always visible on home pages, desktop */}
+      {!isSearchPage && (
         <nav className="hidden lg:flex items-center gap-8 mx-auto overflow-x-auto scrollbar-hide max-w-2xl">
           <div className="flex items-center gap-8">
-            {providerNames.map((name, index) => (
-              <button
-                key={name}
-                onClick={() => onNavClick(index)}
-                className="relative text-base font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-white/80 transition-colors pb-2"
-              >
-                {name}
-                {!isProfileActive && index === activeNav && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#3477d7]" />
-                )}
-              </button>
-            ))}
+            {providers.map((p, index) => {
+              const name = getProviderDisplayName(p, providers, index);
+              const slug = getProviderPageSlug(p, providers, index);
+              return (
+                <button
+                  key={p.name}
+                  onClick={() => router.push(`/${slug}`)}
+                  className="relative text-base font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-white/80 transition-colors pb-2"
+                >
+                  {name}
+                  {!isProfileActive && index === resolvedActiveNav && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#3477d7]" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </nav>
       )}
@@ -165,8 +175,8 @@ export const AppHeader = memo(function AppHeader({
 
       {/* Right side */}
       <div className="flex items-center gap-2 lg:gap-3">
-        {/* Inline search — beranda desktop only */}
-        {isBeranda && !isSearchPage && (
+        {/* Inline search — home pages, desktop only */}
+        {!isSearchPage && (
           <div className="hidden md:flex items-center px-3 lg:px-4 py-2 rounded-full bg-gray-100 dark:bg-white/20 border border-gray-300 dark:border-white transition-colors focus-within:border-[#3477d7]">
             <input
               type="search"

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   CategoryTabs,
   SearchBar,
@@ -14,6 +15,7 @@ import {
   createCategoryFromDramas,
   getGenreName,
 } from "@/components/beranda/utils";
+import { getProviderPageSlug } from "@/components/beranda/utils/constants";
 import type {
   Provider,
   Drama,
@@ -58,10 +60,13 @@ export function UnifiedBerandaMobile({
   const mobileGenres = genres.slice(0, visibleGenreCount);
   const hasMoreGenres = totalGenreCount > visibleGenreCount;
 
+  const router = useRouter();
+
   const handleProviderSelect = (index: number) => {
     const provider = providers[index];
     if (provider) {
-      onProviderChange(provider, index);
+      const slug = getProviderPageSlug(provider, providers, index);
+      router.push(`/${slug}`);
     }
   };
 

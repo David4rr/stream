@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Menu, X, Search, Sun, Moon, User, Heart } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import type { Provider, Kategori } from "../types";
 interface CustomCSSStyleDeclaration extends CSSStyleDeclaration {
   webkitClipPath?: string;
 }
-import { getProviderDisplayName } from "../utils";
+import { getProviderDisplayName, getProviderPageSlug } from "../utils/constants";
 
 interface HeaderProps {
   providers: Provider[];
@@ -40,6 +40,13 @@ export function MobileHeader({
   const router = useRouter();
 
   const providerNames = providers.map((p, i) => getProviderDisplayName(p, providers, i));
+  const pathname = usePathname();
+  const currentSlug = pathname?.split("/").filter(Boolean)[0] || "";
+  // Derive which tab is active from URL
+  const urlActiveNav = providers.findIndex(
+    (p, i) => getProviderPageSlug(p, providers, i) === currentSlug
+  );
+  const resolvedActiveNav = urlActiveNav >= 0 ? urlActiveNav : activeNav;
 
   const handleThemeToggle = useCallback((e?: React.MouseEvent) => {
     const currentTheme = theme || "light";
@@ -91,10 +98,15 @@ export function MobileHeader({
 
   const handleProviderSelect = useCallback(
     (index: number) => {
-      setActiveNav(index);
+      const slug = getProviderPageSlug(
+        providers[index],
+        providers,
+        index
+      );
       setSidebarOpen(false);
+      router.push(`/${slug}`);
     },
-    [setActiveNav]
+    [providers, router]
   );
 
   return (
@@ -176,7 +188,7 @@ export function MobileHeader({
                     <Button
                       variant="ghost"
                       onClick={() => handleProviderSelect(index)}
-                      className={`w-full justify-start px-4 py-6 rounded-lg transition-colors font-normal text-base ${!isProfileActive && !isFavoritesActive && index === activeNav
+                      className={`w-full justify-start px-4 py-6 rounded-lg transition-colors font-normal text-base ${!isProfileActive && !isFavoritesActive && index === resolvedActiveNav
                         ? "bg-[#3477d7] text-white hover:bg-[#3477d7] hover:text-white"
                         : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10"
                         }`}

@@ -5,14 +5,15 @@
  * Fetches based on visibleGenreCount to support dynamic loading.
  * Only fetches NEW genres that haven't been loaded yet.
  *
+ * Uses server action directly instead of Redux dispatch.
+ *
  * Key design: fetchedGenreIds is stored in a ref (not state) to avoid
  * re-creating the fetch callback on every successful fetch, which would
  * cancel in-flight requests and cause unnecessary re-fetches.
  */
 
 import { useState, useEffect, useRef } from "react";
-import { useAppDispatch } from "@/store/hooks";
-import { fetchDramasByGenre } from "@/store/providers-slice";
+import { fetchDramasByGenreByKategoriAction } from "@/app/actions/drama";
 import type { Drama, Genre, Kategori } from "@/components/beranda/types";
 
 export function useGenreDramas(
@@ -22,8 +23,6 @@ export function useGenreDramas(
   initialGenreDramas: Record<number, Drama[]> = {},
   visibleGenreCount: number = 6
 ): { genreDramas: Record<number, Drama[]>, isLoadingGenreDramas: boolean } {
-  const dispatch = useAppDispatch();
-
   // Use refs for mutable values that shouldn't trigger re-renders or
   // recreate the fetch effect when they change mid-fetch.
   const kategoriRef = useRef(kategori);
@@ -49,10 +48,7 @@ export function useGenreDramas(
     lastProviderRef.current = provider;
   }, [provider]);
 
-  // Main fetch effect – only re-runs when provider, genres list, or
-  // visibleGenreCount changes. Because fetchedGenreIdsRef is a ref, completing
-  // a fetch (which used to mutate fetchedGenreIds state) no longer re-triggers
-  // this effect, eliminating the cancel-and-re-fetch loop.
+  // Main fetch effect
   useEffect(() => {
     if (genres.length === 0) return;
 
@@ -77,33 +73,33 @@ export function useGenreDramas(
         if (genresToFetch.length > 0) {
           const results = await Promise.allSettled(
             genresToFetch.map((genre) =>
-              dispatch(fetchDramasByGenre({
-                kategori: kategoriRef.current,
+              fetchDramasByGenreByKategoriAction(
+                kategoriRef.current,
                 provider,
-                genreId: genre.genreId,
-              }))
+                genre.genreId
+              )
             )
           );
 
-          // Discard results if a newer fetch (e.g. provider change) superseded this one
+          // Discard results if a newer fetch superseded this one
           if (cancelToken.cancelled) return;
 
           const updates: Record<number, Drama[]> = {};
           results.forEach((result, index) => {
             const genre = genresToFetch[index];
             fetchedGenreIdsRef.current.add(genre.genreId);
-            if (result.status === "fulfilled" && fetchDramasByGenre.fulfilled.match(result.value)) {
-              updates[genre.genreId] = result.value.payload.dramas;
+            if (result.status === "fulfilled" && result.value.success && result.value.data) {
+              updates[genre.genreId] = result.value.data;
             } else {
               updates[genre.genreId] = [];
             }
           });
 
-          // Merge new results into existing data without replacing the whole object
+          // Merge new results into existing data
           setGenreDramas(prev => ({ ...prev, ...updates }));
         }
 
-        // Advance the cursor even if nothing new was fetched (already loaded)
+        // Advance the cursor even if nothing new was fetched
         lastVisibleCountRef.current = visibleGenreCount;
       } finally {
         if (!cancelToken.cancelled) {
@@ -118,7 +114,7 @@ export function useGenreDramas(
       cancelToken.cancelled = true;
       setIsLoadingGenreDramas(false);
     };
-  }, [provider, genres, visibleGenreCount, dispatch]); // Stable deps – no state in here
+  }, [provider, genres, visibleGenreCount]);
 
   return { genreDramas, isLoadingGenreDramas };
 }
