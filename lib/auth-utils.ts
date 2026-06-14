@@ -135,6 +135,9 @@ export async function syncAuthCookies(response: Response, userData?: AuthRespons
           const lowerKey = key.toLowerCase();
           if (lowerKey === 'max-age' && val) {
             cookieOptions.maxAge = parseInt(val, 10);
+            if (cookieOptions.maxAge && cookieOptions.maxAge > 86400) {
+              cookieOptions.maxAge = 86400; // cap at 24 hours
+            }
           } else if (lowerKey === 'domain' && val) {
             cookieOptions.domain = val;
           } else if (lowerKey === 'path' && val) {
